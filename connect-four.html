@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Connect Four – Neon Physics + Win Banner</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at top, #1f2937 0, #020617 45%, #020617 100%);
+      color: #e5e7eb;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ---------- WIN BANNER (CONGRATULATIONS) ---------- */
+    #win-banner {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-130%);
+      background: radial-gradient(circle at top, #0f172a, #020617);
+      border-radius: 999px;
+      padding: 10px 20px;
+      border: 1px solid rgba(191, 219, 254, 0.8);
+      box-shadow:
+        0 12px 30px rgba(15, 23, 42, 0.9),
+        0 0 30px rgba(59, 130, 246, 0.7);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    #win-banner-text {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: linear-gradient(120deg, #22c55e, #22d3ee, #38bdf8, #a855f7);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      white-space: nowrap;
+    }
+
+    #win-banner-pill {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      box-shadow: 0 0 16px rgba(248, 250, 252, 0.9);
+    }
+
+    .banner-p1 {
+      background: linear-gradient(135deg, #f97316, #c2410c);
+    }
+
+    .banner-p2 {
+      background: linear-gradient(135deg, #facc15, #a16207);
+    }
+
+    #win-banner.show {
+      animation:
+        bannerSlideIn 0.6s ease-out forwards,
+        bannerGlow 1.1s ease-in-out infinite alternate 0.6s;
+    }
+
+    @keyframes bannerSlideIn {
+      0% { transform: translateX(-50%) translateY(-130%); opacity: 0; }
+      60% { transform: translateX(-50%) translateY(0); opacity: 1; }
+      100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+    }
+
+    @keyframes bannerGlow {
+      0% {
+        box-shadow:
+          0 10px 26px rgba(15, 23, 42, 0.9),
+          0 0 18px rgba(59, 130, 246, 0.8);
+      }
+      100% {
+        box-shadow:
+          0 10px 28px rgba(15, 23, 42, 0.9),
+          0 0 28px rgba(244, 114, 182, 1);
+      }
+    }
+
+    /* ---------- BACKGROUND ORBS ---------- */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.75;
+      z-index: -1;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+    .orb:nth-child(1) {
+      width: 280px;
+      height: 280px;
+      background: #22d3ee;
+      top: -60px;
+      left: 10%;
+      animation: float 18s infinite alternate ease-in-out;
+    }
+    .orb:nth-child(2) {
+      width: 320px;
+      height: 320px;
+      background: #f97316;
+      bottom: -80px;
+      right: 5%;
+      animation: float 22s infinite alternate-reverse ease-in-out;
+    }
+    .orb:nth-child(3) {
+      width: 260px;
+      height: 260px;
+      background: #a855f7;
+      top: 50%;
+      left: -80px;
+      animation: float 26s infinite alternate ease-in-out;
+    }
+
+    @keyframes float {
+      0% { transform: translate3d(0, 0, 0); }
+      100% { transform: translate3d(40px, -30px, 0); }
+    }
+
+    .game-wrapper {
+      background: rgba(15, 23, 42, 0.7);
+      padding: 24px 22px 20px;
+      border-radius: 24px;
+      box-shadow:
+        0 18px 60px rgba(0, 0, 0, 0.9),
+        0 0 0 1px rgba(148, 163, 184, 0.18);
+      max-width: 540px;
+      width: 100%;
+      backdrop-filter: blur(22px) saturate(1.4);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      position: relative;
+      transition: transform 0.25s ease, filter 0.25s ease, opacity 0.25s ease;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .title {
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .title span.highlight {
+      background: linear-gradient(120deg, #22c55e, #22d3ee, #38bdf8, #a855f7);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .subtitle {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    .turn-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .turn-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(251, 191, 36, 0.7);
+    }
+
+    .turn-dot.p1 {
+      background: radial-gradient(circle at 30% 30%, #fb923c, #c2410c);
+      box-shadow: 0 0 12px rgba(249, 115, 22, 0.9);
+    }
+
+    .turn-dot.p2 {
+      background: radial-gradient(circle at 30% 30%, #facc15, #a16207);
+      box-shadow: 0 0 12px rgba(250, 204, 21, 0.9);
+    }
+
+    #status {
+      font-size: 0.82rem;
+      color: #e5e7eb;
+    }
+
+    .btn {
+      border: none;
+      padding: 7px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      background: radial-gradient(circle at 20% 0%, #38bdf8, #1d4ed8);
+      color: white;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+      box-shadow: 0 8px 22px rgba(37, 99, 235, 0.65);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .btn:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(37, 99, 235, 0.9);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.7);
+    }
+
+    /* Board container */
+    #board-wrapper {
+      display: flex;
+      justify-content: center;
+      position: relative;
+      margin-top: 6px;
+    }
+
+    #board-wrapper::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 26px;
+      background: conic-gradient(
+        from 200deg,
+        rgba(59, 130, 246, 0.7),
+        rgba(45, 212, 191, 0.6),
+        rgba(244, 114, 182, 0.65),
+        rgba(59, 130, 246, 0.7)
+      );
+      opacity: 0.12;
+      filter: blur(22px);
+      z-index: 0;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(7, 62px);
+      grid-auto-rows: 62px;
+      gap: 8px;
+      padding: 14px;
+      background: radial-gradient(circle at top, #1d4ed8, #020617);
+      border-radius: 22px;
+      box-shadow:
+        inset 0 0 18px rgba(15, 23, 42, 0.9),
+        0 16px 32px rgba(15, 23, 42, 0.9);
+      position: relative;
+      z-index: 1;
+      border: 1px solid rgba(191, 219, 254, 0.4);
+    }
+
+    /* Top ghost disc row */
+    .ghost-row {
+      position: absolute;
+      top: -26px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(7 * 62px + 6 * 8px + 28px);
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      padding: 0 12px;
+    }
+
+    .ghost-slot {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      border: 1px dashed rgba(148, 163, 184, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transform: translateY(6px) scale(0.9);
+      transition: opacity 0.12s ease, transform 0.12s ease;
+    }
+
+    .ghost-slot.active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .ghost-disc {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      opacity: 0.9;
+    }
+
+    .ghost-disc.p1 {
+      background: radial-gradient(circle at 30% 30%, #fed7aa, #f97316);
+      box-shadow: 0 0 12px rgba(248, 250, 252, 0.7);
+    }
+
+    .ghost-disc.p2 {
+      background: radial-gradient(circle at 30% 30%, #fef3c7, #eab308);
+      box-shadow: 0 0 12px rgba(248, 250, 252, 0.7);
+    }
+
+    .cell {
+      width: 62px;
+      height: 62px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 30%, #0b1220, #020617);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.12s ease;
+    }
+
+    .cell::before {
+      content: "";
+      position: absolute;
+      inset: 7px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 25% 25%, #020617, #000000);
+      box-shadow:
+        inset 0 3px 4px rgba(148, 163, 184, 0.28),
+        inset 0 -4px 6px rgba(15, 23, 42, 0.9);
+      z-index: 0;
+      transition: box-shadow 0.12s ease;
+    }
+
+    .cell.column-hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.35);
+    }
+
+    .cell.column-hover::before {
+      box-shadow:
+        inset 0 3px 5px rgba(148, 163, 184, 0.55),
+        inset 0 -5px 10px rgba(15, 23, 42, 1);
+    }
+
+    /* Physics-style disc animation */
+    .disc {
+      position: absolute;
+      width: 86%;
+      height: 86%;
+      border-radius: 50%;
+      z-index: 2;
+      transform: translateY(-260%) scaleY(0.9) rotate(0deg);
+      animation-name: dropPhysics;
+      animation-timing-function: cubic-bezier(0.18, 0.9, 0.35, 1.3);
+      animation-fill-mode: forwards;
+      box-shadow:
+        0 4px 8px rgba(15, 23, 42, 0.9),
+        0 0 16px rgba(248, 250, 252, 0.25);
+    }
+
+    .disc.player1 {
+      background: radial-gradient(circle at 25% 25%, #fed7aa, #f97316);
+      box-shadow:
+        0 4px 10px rgba(148, 27, 12, 0.6),
+        0 0 16px rgba(249, 115, 22, 0.9);
+    }
+
+    .disc.player2 {
+      background: radial-gradient(circle at 25% 25%, #fef3c7, #eab308);
+      box-shadow:
+        0 4px 10px rgba(161, 98, 7, 0.6),
+        0 0 16px rgba(250, 204, 21, 0.9);
+    }
+
+    @keyframes dropPhysics {
+      0% {
+        transform: translateY(-260%) scaleY(0.9) scaleX(1.02) rotate(0deg);
+      }
+      55% {
+        transform: translateY(0%) scaleY(1.06) scaleX(0.96) rotate(2deg);
+      }
+      72% {
+        transform: translateY(-16%) scaleY(0.95) scaleX(1.03) rotate(-1deg);
+      }
+      87% {
+        transform: translateY(0%) scaleY(1.02) scaleX(0.99) rotate(0.4deg);
+      }
+      100% {
+        transform: translateY(0%) scaleY(1) scaleX(1) rotate(0deg);
+      }
+    }
+
+    .cell.winning .disc {
+      animation: pulseGlow 0.9s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulseGlow {
+      0% {
+        box-shadow:
+          0 4px 12px rgba(15, 23, 42, 1),
+          0 0 16px rgba(248, 250, 252, 0.7);
+        transform: translateY(0) scale(1);
+      }
+      100% {
+        box-shadow:
+          0 8px 18px rgba(15, 23, 42, 1),
+          0 0 30px rgba(248, 250, 252, 1);
+        transform: translateY(-1px) scale(1.04);
+      }
+    }
+
+    .footer {
+      margin-top: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: #9ca3af;
+      position: relative;
+      z-index: 1;
+    }
+
+    .player-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .indicator-disc {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(248, 250, 252, 0.6);
+    }
+
+    .indicator-disc.p1 {
+      background: linear-gradient(135deg, #f97316, #c2410c);
+    }
+
+    .indicator-disc.p2 {
+      background: linear-gradient(135deg, #facc15, #a16207);
+    }
+
+    .mini-text {
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+
+    @media (max-width: 560px) {
+      .game-wrapper {
+        margin: 14px;
+        padding: 18px 14px 16px;
+      }
+
+      #board {
+        grid-template-columns: repeat(7, 48px);
+        grid-auto-rows: 48px;
+        gap: 6px;
+        padding: 10px;
+      }
+
+      .cell {
+        width: 48px;
+        height: 48px;
+      }
+
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .controls {
+        flex-direction: row;
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .ghost-row {
+        width: calc(7 * 48px + 6 * 6px + 18px);
+        top: -22px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Win banner -->
+  <div id="win-banner">
+    <div id="win-banner-pill" class="banner-p1"></div>
+    <div id="win-banner-text">Congratulations Player 1! 🎉</div>
+  </div>
+
+  <!-- Background orbs -->
+  <div class="orb"></div>
+  <div class="orb"></div>
+  <div class="orb"></div>
+
+  <div class="game-wrapper">
+    <div class="header">
+      <div class="title-group">
+        <div class="title">
+          <span class="highlight">Connect</span> Four
+        </div>
+        <div class="subtitle">Neon Arena</div>
+      </div>
+
+      <div class="controls">
+        <div class="turn-pill">
+          <div id="turn-dot" class="turn-dot p1"></div>
+          <span id="status">Player 1’s turn</span>
+        </div>
+        <button id="reset-btn" class="btn">Reset Game</button>
+      </div>
+    </div>
+
+    <div id="board-wrapper">
+      <div class="ghost-row" id="ghost-row"></div>
+      <div id="board"></div>
+    </div>
+
+    <div class="footer">
+      <div class="player-indicator">
+        <span class="indicator-disc p1"></span> Player 1 (Orange)
+      </div>
+      <div class="player-indicator">
+        <span class="indicator-disc p2"></span> Player 2 (Gold)
+      </div>
+    </div>
+    <div class="mini-text" style="margin-top: 6px; text-align:right;">
+      Tip: Hover a column to preview your move.
+    </div>
+  </div>
+
+  <script>
+    const ROWS = 6;
+    const COLS = 7;
+
+    const boardElement = document.getElementById("board");
+    const statusElement = document.getElementById("status");
+    const resetButton = document.getElementById("reset-btn");
+    const turnDot = document.getElementById("turn-dot");
+    const ghostRow = document.getElementById("ghost-row");
+
+    const winBanner = document.getElementById("win-banner");
+    const winBannerText = document.getElementById("win-banner-text");
+    const winBannerPill = document.getElementById("win-banner-pill");
+
+    let board;
+    let currentPlayer;
+    let gameOver;
+    let winningCells = [];
+
+    function createEmptyBoard() {
+      const arr = [];
+      for (let r = 0; r < ROWS; r++) {
+        const row = [];
+        for (let c = 0; c < COLS; c++) row.push(0);
+        arr.push(row);
+      }
+      return arr;
+    }
+
+    function initGhostRow() {
+      ghostRow.innerHTML = "";
+      for (let c = 0; c < COLS; c++) {
+        const slot = document.createElement("div");
+        slot.classList.add("ghost-slot");
+        slot.dataset.col = c;
+
+        const disc = document.createElement("div");
+        disc.classList.add("ghost-disc", currentPlayer === 1 ? "p1" : "p2");
+        slot.appendChild(disc);
+
+        ghostRow.appendChild(slot);
+      }
+    }
+
+    function updateGhostColors() {
+      const slots = ghostRow.querySelectorAll(".ghost-slot");
+      slots.forEach(slot => {
+        const disc = slot.querySelector(".ghost-disc");
+        disc.classList.toggle("p1", currentPlayer === 1);
+        disc.classList.toggle("p2", currentPlayer === 2);
+      });
+    }
+
+    function highlightGhostColumn(col) {
+      const slots = ghostRow.querySelectorAll(".ghost-slot");
+      slots.forEach(slot => {
+        if (parseInt(slot.dataset.col, 10) === col && !gameOver) {
+          slot.classList.add("active");
+        } else {
+          slot.classList.remove("active");
+        }
+      });
+    }
+
+    function clearGhostHighlight() {
+      const slots = ghostRow.querySelectorAll(".ghost-slot");
+      slots.forEach(slot => slot.classList.remove("active"));
+    }
+
+    function initGame() {
+      board = createEmptyBoard();
+      currentPlayer = 1;
+      gameOver = false;
+      winningCells = [];
+      statusElement.textContent = "Player 1’s turn";
+      turnDot.classList.remove("p2");
+      turnDot.classList.add("p1");
+      hideWinBanner();
+
+      boardElement.innerHTML = "";
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const cell = document.createElement("div");
+          cell.classList.add("cell");
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          cell.addEventListener("click", handleCellClick);
+          cell.addEventListener("mouseenter", handleCellHover);
+          cell.addEventListener("mouseleave", handleCellLeave);
+          boardElement.appendChild(cell);
+        }
+      }
+
+      initGhostRow();
+    }
+
+    function handleCellHover(e) {
+      const col = parseInt(e.currentTarget.dataset.col, 10);
+      setHoverColumn(col);
+      highlightGhostColumn(col);
+    }
+
+    function handleCellLeave() {
+      clearHoverColumn();
+      clearGhostHighlight();
+    }
+
+    function setHoverColumn(col) {
+      const cells = boardElement.children;
+      for (let i = 0; i < cells.length; i++) {
+        const cell = cells[i];
+        const cellCol = parseInt(cell.dataset.col, 10);
+        if (cellCol === col && !gameOver) {
+          cell.classList.add("column-hover");
+        } else {
+          cell.classList.remove("column-hover");
+        }
+      }
+    }
+
+    function clearHoverColumn() {
+      const cells = boardElement.children;
+      for (let i = 0; i < cells.length; i++) {
+        cells[i].classList.remove("column-hover");
+      }
+    }
+
+    function handleCellClick(e) {
+      if (gameOver) return;
+
+      const col = parseInt(e.currentTarget.dataset.col, 10);
+
+      // find lowest empty row
+      let placedRow = null;
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (board[r][col] === 0) {
+          board[r][col] = currentPlayer;
+          placedRow = r;
+          break;
+        }
+      }
+
+      if (placedRow === null) return;
+
+      renderDisc(placedRow, col, currentPlayer);
+
+      if (checkWin(placedRow, col, currentPlayer)) {
+        gameOver = true;
+        statusElement.textContent = `Player ${currentPlayer} wins! 🎉`;
+        highlightWinningCells();
+        clearGhostHighlight();
+        clearHoverColumn();
+        showWinBanner(currentPlayer);
+        return;
+      }
+
+      if (isBoardFull()) {
+        gameOver = true;
+        statusElement.textContent = "It's a draw! 🤝";
+        clearGhostHighlight();
+        clearHoverColumn();
+        showWinBanner(0);
+        return;
+      }
+
+      // switch player
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      statusElement.textContent = `Player ${currentPlayer}’s turn`;
+
+      if (currentPlayer === 1) {
+        turnDot.classList.remove("p2");
+        turnDot.classList.add("p1");
+      } else {
+        turnDot.classList.remove("p1");
+        turnDot.classList.add("p2");
+      }
+      updateGhostColors();
+    }
+
+    function renderDisc(row, col, player) {
+      const cell = getCellElement(row, col);
+      const oldDisc = cell.querySelector(".disc");
+      if (oldDisc) oldDisc.remove();
+
+      const disc = document.createElement("div");
+      disc.classList.add("disc", player === 1 ? "player1" : "player2");
+
+      const base = 0.35;
+      const perRow = 0.06;
+      const duration = base + row * perRow;
+      disc.style.animationDuration = duration.toFixed(2) + "s";
+
+      cell.appendChild(disc);
+    }
+
+    function getCellElement(row, col) {
+      const index = row * COLS + col;
+      return boardElement.children[index];
+    }
+
+    function isBoardFull() {
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (board[r][c] === 0) return false;
+        }
+      }
+      return true;
+    }
+
+    function checkWin(row, col, player) {
+      winningCells = [];
+      const directions = [
+        { dr: 0, dc: 1 },
+        { dr: 1, dc: 0 },
+        { dr: 1, dc: 1 },
+        { dr: 1, dc: -1 }
+      ];
+
+      for (const { dr, dc } of directions) {
+        const lineCells = [{ r: row, c: col }];
+
+        let r = row - dr;
+        let c = col - dc;
+        while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === player) {
+          lineCells.unshift({ r, c });
+          r -= dr;
+          c -= dc;
+        }
+
+        r = row + dr;
+        c = col + dc;
+        while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === player) {
+          lineCells.push({ r, c });
+          r += dr;
+          c += dc;
+        }
+
+        if (lineCells.length >= 4) {
+          winningCells = lineCells;
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function highlightWinningCells() {
+      if (!winningCells || winningCells.length === 0) return;
+      for (const cell of winningCells) {
+        const el = getCellElement(cell.r, cell.c);
+        el.classList.add("winning");
+      }
+    }
+
+    // -------- Win banner functions --------
+    function showWinBanner(player) {
+      if (player === 0) {
+        winBannerText.textContent = "It's a Draw! Good game 🤝";
+        winBannerPill.classList.remove("banner-p1", "banner-p2");
+      } else {
+        winBannerText.textContent = `Congratulations Player ${player}! 🎉`;
+        winBannerPill.classList.toggle("banner-p1", player === 1);
+        winBannerPill.classList.toggle("banner-p2", player === 2);
+      }
+
+      winBanner.classList.remove("show"); // reset animation
+      void winBanner.offsetWidth;        // force reflow
+      winBanner.classList.add("show");
+
+      // Hide after a few seconds
+      setTimeout(() => {
+        hideWinBanner();
+      }, 5000);
+    }
+
+    function hideWinBanner() {
+      winBanner.classList.remove("show");
+    }
+
+    resetButton.addEventListener("click", () => {
+      initGame();
+    });
+
+    // start game
+    initGame();
+  </script>
+</body>
+</html>
